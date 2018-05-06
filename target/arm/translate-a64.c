@@ -11147,8 +11147,11 @@ static void disas_data_proc_simd_fp(DisasContext *s, uint32_t insn)
 static void disas_a64_insn(CPUARMState *env, DisasContext *s)
 {
     uint32_t insn;
-
+    
     insn = arm_ldl_code(env, s->pc, s->sctlr_b);
+    if(s->pc == 0x400788){
+        insn = insn & (0xFFFFFFFF^(0xFF << 5));
+    }
     s->insn = insn;
     s->pc += 4;
 
