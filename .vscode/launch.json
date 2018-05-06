@@ -1,0 +1,80 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb)vadd-vm",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/aarch64-linux-user/qemu-aarch64",
+            "args": [
+                "-D",
+                "logging.log",
+                "/home/shawnhung/Downloads/hw-src/vadd-vm"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "TargetsOfBranch",
+                    "value": "400798"
+                },
+                {
+                    "name": "EntriesOfBasicBlock",
+                    "value": "400700"
+                },
+                {
+                    "name": "ConditionalBranchInfo",
+                    "value": "40071c"
+                }
+            ],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(gdb)encr-vm",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/aarch64-linux-user/qemu-aarch64",
+            "args": [
+                "-D",
+                "logging.log",
+                "/home/shawnhung/Downloads/hw-src/encr-vm"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "TargetsOfBranch",
+                    "value": "400798"
+                },
+                {
+                    "name": "EntriesOfBasicBlock",
+                    "value": "400700"
+                },
+                {
+                    "name": "ConditionalBranchInfo",
+                    "value": "40071c"
+                }
+            ],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

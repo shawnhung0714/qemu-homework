@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "glib.h": "c",
+        "log.h": "c",
+        "tcg.h": "c",
+        "exception": "c",
+        "initializer_list": "c"
+    }
+}

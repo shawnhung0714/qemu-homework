@@ -35,6 +35,7 @@
 #endif
 #include "sysemu/cpus.h"
 #include "sysemu/replay.h"
+#include <glib.h>
 
 /* -icount align implementation. */
 
@@ -164,6 +165,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
 
     cpu->can_do_io = !use_icount;
     ret = tcg_qemu_tb_exec(env, tb_ptr);
+
     cpu->can_do_io = 1;
     last_tb = (TranslationBlock *)(ret & ~TB_EXIT_MASK);
     tb_exit = ret & TB_EXIT_MASK;
@@ -380,6 +382,9 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
         last_tb = NULL;
     }
 #endif
+    uintptr_t entriesOfBasicBlock = strtoul(getenv("EntriesOfBasicBlock"), NULL, 16);
+    uintptr_t conditionalBranchInfo = strtoul(getenv("ConditionalBranchInfo"), NULL, 16);
+
     /* See if we can patch the calling TB. */
     if (last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
         if (!have_tb_lock) {
@@ -392,6 +397,45 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     }
     if (have_tb_lock) {
         tb_unlock();
+    }
+
+    CPUARMState *arm_env = (CPUARMState *)env;
+    if (!arm_env->entryBlocks) {
+        arm_env->entryBlocks = g_hash_table_new(g_int64_hash, g_int64_equal);
+    }
+
+    if (!arm_env->conditionBranch) {
+        arm_env->conditionBranch = g_hash_table_new(g_str_hash, g_str_equal);
+        g_hash_table_replace(arm_env->conditionBranch, (char *)"taken",
+                GINT_TO_POINTER(0));
+        g_hash_table_replace(arm_env->conditionBranch, (char *)"not-taken",
+                GINT_TO_POINTER(0));
+    }
+
+    if (last_tb) {
+        long* value = NULL;
+        long location = last_tb->pc + last_tb->size - 4;
+        if (pc == entriesOfBasicBlock) {
+            if (g_hash_table_lookup(arm_env->entryBlocks, GINT_TO_POINTER(location))) {
+                value = g_hash_table_lookup(arm_env->entryBlocks, GINT_TO_POINTER(location));
+                g_hash_table_replace(arm_env->entryBlocks, GINT_TO_POINTER(location), GINT_TO_POINTER(GPOINTER_TO_INT(value) + 1));
+            } else {
+                g_hash_table_replace(arm_env->entryBlocks, GINT_TO_POINTER(location), GINT_TO_POINTER(1));
+            }
+        }
+
+        if (location == conditionalBranchInfo) {
+            char* key = NULL;
+            int tb_exit = tb->jmp_list_first & 3;
+            if (tb_exit == TB_EXIT_IDX1) {
+                key = (char*)"taken";
+            } else {
+                key = (char*)"not-taken";
+            }
+
+            value = g_hash_table_lookup(arm_env->conditionBranch, key);
+            g_hash_table_replace(arm_env->conditionBranch, key, GINT_TO_POINTER(GPOINTER_TO_INT(value) + 1));
+        }
     }
     return tb;
 }
@@ -664,16 +708,41 @@ int cpu_exec(CPUState *cpu)
         }
     }
 
+    uintptr_t branch = strtoul(getenv("TargetsOfBranch"), NULL, 16);
+    CPUARMState *env = cpu->env_ptr;
+    if (!env->targetsOfBranch) {
+        env->targetsOfBranch = g_hash_table_new(g_int64_hash, g_int64_equal);
+    }
+
+    bool needRecordTarget = false;
+
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
-        TranslationBlock *last_tb = NULL;
+        TranslationBlock* last_tb = NULL;
         int tb_exit = 0;
 
         while (!cpu_handle_interrupt(cpu, &last_tb)) {
-            TranslationBlock *tb = tb_find(cpu, last_tb, tb_exit);
+            TranslationBlock* tb = tb_find(cpu, last_tb, tb_exit);
+
+            if (needRecordTarget) {
+                int *value = NULL;
+                if (g_hash_table_lookup(env->targetsOfBranch, GINT_TO_POINTER(env->pc))) {
+                    value = g_hash_table_lookup(env->targetsOfBranch, GINT_TO_POINTER(env->pc));
+                    g_hash_table_replace(env->targetsOfBranch, GINT_TO_POINTER(env->pc),
+                        GINT_TO_POINTER(*value + 1));
+                } else {
+                    g_hash_table_replace(env->targetsOfBranch, GINT_TO_POINTER(env->pc),
+                        GINT_TO_POINTER(1));
+                }
+                needRecordTarget = false;
+            }
+            if(tb->pc == branch){
+                needRecordTarget = true;
+            }
+            
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
             /* Try to align the host and virtual clocks
-               if the guest is in advance */
+             if the guest is in advance */
             align_clocks(&sc, cpu);
         }
     }

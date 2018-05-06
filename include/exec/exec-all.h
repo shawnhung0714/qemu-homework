@@ -441,9 +441,18 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
                            "] index %d -> %p [" TARGET_FMT_lx "]\n",
                            tb->tc_ptr, tb->pc, n,
                            tb_next->tc_ptr, tb_next->pc);
+    
+    uintptr_t targetsOfBranch = strtoul(getenv("TargetsOfBranch"), NULL, 16);
+    uintptr_t entriesOfBasicBlock = strtoul(getenv("EntriesOfBasicBlock"), NULL, 16);
+    uintptr_t conditionalBranchInfo = strtoul(getenv("ConditionalBranchInfo"), NULL, 16);
 
     /* patch the native jump address */
-    tb_set_jmp_target(tb, n, (uintptr_t)tb_next->tc_ptr);
+    if(tb_next->pc != targetsOfBranch && 
+       tb->pc != entriesOfBasicBlock &&
+       tb_next->pc != conditionalBranchInfo && 
+       tb->pc != conditionalBranchInfo){
+           tb_set_jmp_target(tb, n, (uintptr_t)tb_next->tc_ptr);
+    }
 
     /* add in TB jmp circular list */
     tb->jmp_list_next[n] = tb_next->jmp_list_first;

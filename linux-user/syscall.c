@@ -839,6 +839,21 @@ static inline int is_error(abi_long ret)
     return (abi_ulong)ret >= (abi_ulong)(-4096);
 }
 
+static inline gint target_key_compare(gconstpointer a, gconstpointer b)
+{
+    uint64_t aidx = GPOINTER_TO_INT(a);
+    uint64_t bidx = GPOINTER_TO_INT(b);
+
+    if (aidx > bidx) {
+        return 1;
+    }
+    if (aidx < bidx) {
+        return -1;
+    }
+    return 0;
+}
+
+
 const char *target_strerror(int err)
 {
     if (err == TARGET_ERESTARTSYS) {
@@ -9784,6 +9799,46 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 #ifdef TARGET_GPROF
         _mcleanup();
 #endif
+        {
+            uintptr_t targetsOfBranch = strtoul(getenv("TargetsOfBranch"), NULL, 16);
+            uintptr_t entriesOfBasicBlock = strtoul(getenv("EntriesOfBasicBlock"), NULL, 16);
+            uintptr_t conditionalBranchInfo = strtoul(getenv("ConditionalBranchInfo"), NULL, 16);
+
+            if (targetsOfBranch != 0) {
+                qemu_log("Targets of Branch 0x%lx\n",targetsOfBranch);
+                GHashTable *branches = ((CPUARMState *)cpu_env)->targetsOfBranch;
+                GList *keys = g_hash_table_get_keys(branches);
+                GList *sortedKeys = g_list_sort(keys, target_key_compare);
+
+                GList *key = g_list_first(sortedKeys);
+                while (key){
+                    qemu_log("%x %d\n", GPOINTER_TO_INT(key->data), GPOINTER_TO_INT(g_hash_table_lookup(branches, key->data)));
+                    key = g_list_next(key);
+                }
+            }
+            qemu_log("\n");
+
+            if (entriesOfBasicBlock != 0) {
+                qemu_log("Entries Of BasicBlock 0x%lx\n",entriesOfBasicBlock);
+                GHashTable *branches = ((CPUARMState *)cpu_env)->entryBlocks;
+                GHashTableIter iter;
+                gpointer key, value;
+                g_hash_table_iter_init (&iter, branches);
+                while (g_hash_table_iter_next(&iter, &key, &value)){
+                    qemu_log("%x %d\n", GPOINTER_TO_INT(key), GPOINTER_TO_INT(value));
+                }
+            }
+            qemu_log("\n");
+            
+            if (conditionalBranchInfo != 0) {
+                qemu_log("Conditional branch 0x%lx\n",conditionalBranchInfo);
+                GHashTable *record = ((CPUARMState *)cpu_env)->conditionBranch;
+                qemu_log("taken:%d, not-taken:%d\n", 
+                        GPOINTER_TO_INT(g_hash_table_lookup(record, "taken")), 
+                        GPOINTER_TO_INT(g_hash_table_lookup(record, "not-taken")));
+            }
+        }
+
         gdb_exit(cpu_env, arg1);
         ret = get_errno(exit_group(arg1));
         break;
