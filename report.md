@@ -48,6 +48,6 @@ qemu-aarch 64 encr-vm
 - Solution
 >Although the encryption is rather easy to identify, by obseration of ascii codes of cipher and plain text, it is still difficult to put decryption in assembly level.
 >
->After disassembling the binary file with Hopper Disassembler, I found it is quite easy to bypass the encryption by modifying the parameter of **encry** function.
+>After disassembling the binary file with Hopper Disassembler, I found it is quite easy to bypass the encryption by modifying the second parameter of **encry** function.
 >
->Therefore, I put some code to intercept instruction traslation to address **0x400788**, defining the value assignment of the second parameter of **encry** function, so that no encryption will be executed, and the output will be equal to the input.
+>Therefore, I put some code to intercept instruction traslation to address **0x400788**, defining the value assignment of the second parameter of **encry** function, so that no encryption will be idempotent, and the output will be equal to the input.
